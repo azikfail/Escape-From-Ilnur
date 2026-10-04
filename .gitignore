@@ -1,7 +1,7 @@
 # build outputs and heavy local work files (installers go to GitHub Releases)
-release/
+/release/
 release.rar
-video/
+/video/
 desktop/node_modules/
 desktop/game/
 .claude/
