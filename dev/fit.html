@@ -1,0 +1,111 @@
+<!doctype html><meta charset="utf-8"><title>fit</title><body style="margin:0;background:#556"><canvas id=c style="width:100vw;height:100vh;display:block"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="../assets/handrig.js"></script>
+<script>
+/* Grip fitting tool: measures hand/flashlight interpenetration and contact gaps for a pose and renders contact sheets. */
+const H=window.HANDRIG,r=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});r.outputEncoding=THREE.sRGBEncoding;
+const sc=new THREE.Scene();sc.background=new THREE.Color(0x667788);
+sc.add(new THREE.HemisphereLight(0xffffff,0x444455,1.0));const dl=new THREE.DirectionalLight(0xffffff,1.5);dl.position.set(30,50,40);sc.add(dl);
+const L=new THREE.GLTFLoader(),load=u=>new Promise((res,rej)=>L.load(u,res,undefined,rej));
+let G={};
+Promise.all([load('../assets/models/hand.glb'),load('../assets/models/flashlight.glb')]).then(([h,f])=>{
+  h.scene.traverse(o=>{if(o.isMesh)G.hm=o;});G.rest=G.hm.geometry;G.hm.material.side=THREE.DoubleSide;sc.add(h.scene);
+  G.fl=f.scene;G.fl.matrixAutoUpdate=false;sc.add(G.fl);
+  // radial profile of the flashlight (max radius per axial bin, metres, z in [-.065,.065])
+  // sample every triangle so long plain cylinder segments (no vertices inside) are measured too
+  const N=130,prof=new Float32Array(N),A=new THREE.Vector3(),B=new THREE.Vector3(),C=new THREE.Vector3(),Q=new THREE.Vector3();
+  f.scene.traverse(o=>{if(o.isMesh){const p=o.geometry.attributes.position,ix=o.geometry.index,nt=(ix?ix.count:p.count)/3;
+    for(let t=0;t<nt;t++){const id=k=>ix?ix.getX(t*3+k):t*3+k;A.fromBufferAttribute(p,id(0));B.fromBufferAttribute(p,id(1));C.fromBufferAttribute(p,id(2));
+      for(let u=0;u<=8;u++)for(let w=0;w<=8-u;w++){Q.set(0,0,0).addScaledVector(A,u/8).addScaledVector(B,w/8).addScaledVector(C,1-(u+w)/8);
+        const b=Math.min(N-1,Math.max(0,Math.floor((Q.z+.065)/.13*N)));prof[b]=Math.max(prof[b],Math.hypot(Q.x,Q.y));}}}});
+  for(let i=0;i<N;i++)if(!prof[i])prof[i]=Math.max(prof[i-1]||0,prof[i+1]||0);
+  G.prof=prof;G.N=N;document.title='ready';
+});
+const lab3=['meta','prox','mid','dist'];
+function evalPose(P,keep){
+  P=H.fin(P);const g=H.deform(G.rest,P),pos=g.attributes.position,lab=g.userData.lab,seg=g.userData.seg;
+  const M=H.flashMatrix(P),Mi=new THREE.Matrix4().copy(M).invert(),v=new THREE.Vector3(),cm=100*P.fscale;
+  const st={};const key=(l,s)=>l<0?'palm':(['index','middle','ring','pinky','thumb'][l]+s);
+  const cen={};
+  for(let i=0;i<pos.count;i++){
+    v.fromBufferAttribute(pos,i);const y=v.y;v.applyMatrix4(Mi);
+    if(v.z<-.065||v.z>.065)continue;
+    const R=G.prof[Math.min(G.N-1,Math.floor((v.z+.065)/.13*G.N))],d=(Math.hypot(v.x,v.y)-R)*cm;   // >0 outside, <0 inside (cm)
+    const l=lab[i],s=seg[i];if(l<0&&(y<8||y>17))continue;
+    const k=key(l,s);const e=st[k]||(st[k]={pen:0,gap:1e9,n:0,np:0});e.n++;e.gap=Math.min(e.gap,d);if(d<0){e.pen=Math.max(e.pen,-d);if(d<-.1)e.np++;}
+  }
+  // thumb direction (distal centroid - proximal centroid) vs barrel axis
+  const c1=new THREE.Vector3(),c3=new THREE.Vector3();let n1=0,n3=0;
+  for(let i=0;i<pos.count;i++)if(lab[i]===4){v.fromBufferAttribute(pos,i);if(seg[i]===1){c1.add(v);n1++;}if(seg[i]===3){c3.add(v);n3++;}}
+  const td=c3.multiplyScalar(1/Math.max(1,n3)).sub(c1.multiplyScalar(1/Math.max(1,n1))).normalize();
+  st.thumbDot=td.dot(new THREE.Vector3(...P.fax).normalize());
+  // wrap angle of each phalanx centroid around the barrel: 0 = palm side, 90 = over the top (+y), 180 = far side, 270 = underneath
+  const ax=new THREE.Vector3(...P.fax).normalize(),e1=new THREE.Vector3(0,0,-1).addScaledVector(ax,-ax.z*-1).normalize(),e2=new THREE.Vector3().crossVectors(ax,e1),bb=new THREE.Vector3(...P.b);
+  const cs={};for(let i=0;i<pos.count;i++){const l=lab[i];if(l<0)continue;const k=l*4+seg[i];const c=cs[k]||(cs[k]=[new THREE.Vector3(),0]);c[0].add(v.fromBufferAttribute(pos,i));c[1]++;}
+  for(const k in cs){const q=cs[k][0].multiplyScalar(1/cs[k][1]).sub(bb);q.addScaledVector(ax,-q.dot(ax));let ph=Math.atan2(q.dot(e2),q.dot(e1))*180/Math.PI;if(ph<-30)ph+=360;
+    const nm=['index','middle','ring','pinky','thumb'][k>>2]+(k&3);if(st[nm])st[nm].phi=ph;}
+  if(keep){G.hm.geometry=g;G.fl.matrix.copy(M);}
+  return st;
+}
+const FING=['index','middle','ring','pinky'];
+function costFinger(st,f){
+  let pen=0,np=0;for(let s=1;s<4;s++){const e=st[f+s];if(e){pen=Math.max(pen,e.pen);np+=e.np;}}
+  const g=s=>st[f+s]?st[f+s].gap:5;
+  const ph=s=>st[f+s]&&st[f+s].phi!=null?st[f+s].phi:0;
+  return 30*Math.max(0,pen-.05)+.3*np+2*Math.abs(g(3))+1.5*Math.abs(g(2))+Math.abs(g(1))+.05*Math.max(0,165-ph(2))+.05*Math.max(0,225-ph(3));
+}
+function costThumb(st){
+  const e=s=>st['thumb'+s]||{pen:0,gap:5,np:0};let pen=Math.max(e(1).pen,e(2).pen,e(3).pen),np=e(1).np+e(2).np+e(3).np;
+  return 30*Math.max(0,pen-.05)+.3*np+2*Math.abs(e(3).gap)+Math.abs(e(2).gap)*.7+4*(1-st.thumbDot);
+}
+function costPalm(st){const e=st.palm||{pen:0,gap:5,np:0};return 30*Math.max(0,e.pen-.05)+.2*e.np+2*Math.abs(e.gap);}
+// coordinate descent over a list of [getter,setter] variables
+function descend(P,vars,cost,steps=[8,4,2,1]){
+  let best=cost(evalPose(P)),evals=1;
+  for(const st of steps){let imp=true;while(imp){imp=false;for(const [get,set] of vars){for(const sg of [1,-1]){const o=get(P);set(P,o+sg*st);const c=cost(evalPose(P));evals++;if(c<best-1e-4){best=c;imp=true;}else set(P,o);}}}}
+  return {best,evals};
+}
+function fitFingers(P){const out={};for(const f of FING){const vars=[0,1,2].map(j=>[p=>p.fa[f][j],(p,x)=>p.fa[f][j]=Math.max(0,Math.min(110,x))]);out[f]=descend(P,vars,st=>costFinger(st,f));}return out;}
+function fitThumb(P){const vars=[[p=>p.ta[0],(p,x)=>p.ta[0]=x],[p=>p.ta[1],(p,x)=>p.ta[1]=x],[p=>p.ta[2],(p,x)=>p.ta[2]=x],[p=>p.tc[0],(p,x)=>p.tc[0]=x],[p=>p.tc[1],(p,x)=>p.tc[1]=x],[p=>p.tc[2],(p,x)=>p.tc[2]=x]];return descend(P,vars,costThumb);}
+function fitPalm(P){const vars=[[p=>p.b[2]*10,(p,x)=>p.b[2]=x/10],[p=>p.b[1]*10,(p,x)=>p.b[1]=x/10]];return descend(P,vars,costPalm,[4,2,1]);}
+// analytic wrap: put PIP, DIP and fingertip on a circle of radius R(t)+pad around the barrel, in each finger's flexion plane
+function radiusAt(P,x,w=.85){const ax=new THREE.Vector3(...P.fax).normalize();let m=0;   // max radius over the finger's width
+  for(let dx=-w;dx<=w+1e-6;dx+=w/4){const t=(x+dx-P.b[0])/ax.x,zl=-t/(100*P.fscale);m=Math.max(m,G.prof[Math.min(G.N-1,Math.max(0,Math.floor((zl+.065)/.13*G.N)))]);}
+  return m*100*P.fscale;}
+function cc(p0,r0,p1,r1,pick){const dx=p1[0]-p0[0],dy=p1[1]-p0[1],d=Math.hypot(dx,dy);if(d>r0+r1||d<Math.abs(r0-r1)||d<1e-6)return null;
+  const a=(r0*r0-r1*r1+d*d)/(2*d),h=Math.sqrt(Math.max(0,r0*r0-a*a)),mx=p0[0]+a*dx/d,my=p0[1]+a*dy/d;
+  const s1=[mx+h*dy/d,my-h*dx/d],s2=[mx-h*dy/d,my+h*dx/d];return pick(s1,s2);}
+function wrap(P,f,pad,slack=0){
+  const D=H.DIGITS.find(d=>d.name===f),pts=D.pts.map(p=>[p.y,p.z]),ax=new THREE.Vector3(...P.fax).normalize();
+  const x=D.pts[0].x,t=(x-P.b[0])/ax.x,c=[P.b[1]+ax.y*t,P.b[2]+ax.z*t],rb=radiusAt(P,x)+pad+slack;
+  const L=[1,2,3].map(i=>Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));L[2]=Math.max(.5,L[2]-.45);   // TIP is a surface point: bone ends earlier
+  const ang=(u,v)=>Math.atan2(v[1]-u[1],v[0]-u[0]);
+  const phiOf=q=>{let a=Math.atan2(-(q[1]-c[1]),(q[0]-c[0]));return a;};   // pick the solution further along the wrap (y->z->-y->-z)
+  const far=(prev)=>(s1,s2)=>{const w=q=>{const v1=[prev[0]-c[0],prev[1]-c[1]],v2=[q[0]-c[0],q[1]-c[1]];return v1[0]*v2[1]-v1[1]*v2[0];};return w(s1)>w(s2)?s1:s2;};
+  const J=[pts[0]];
+  const rel=(q,A0)=>{let a=Math.atan2(q[1]-c[1],q[0]-c[0])-A0;while(a<1e-6)a+=2*Math.PI;while(a>=2*Math.PI+1e-6)a-=2*Math.PI;return a;};
+  const first=prev=>{const A0=Math.atan2(prev[1]-c[1],prev[0]-c[0]);return (s1,s2)=>rel(s1,A0)<rel(s2,A0)?s1:s2;};
+  for(let i=0;i<3;i++){const prev=J[i];let q=cc(prev,L[i],c,rb,first(prev));
+    if(!q){const d=Math.hypot(c[0]-prev[0],c[1]-prev[1]);if(d<rb){return null;}const tg=Math.atan2(c[1]-prev[1],c[0]-prev[0])-Math.asin(Math.min(1,rb/d));q=[prev[0]+L[i]*Math.cos(tg),prev[1]+L[i]*Math.sin(tg)];}
+    J.push(q);}
+  const rest=[ang(pts[0],pts[1]),ang(pts[1],pts[2]),ang(pts[2],pts[3])],want=[ang(J[0],J[1]),ang(J[1],J[2]),ang(J[2],J[3])],R2D=180/Math.PI;
+  const nz=a=>{while(a>Math.PI)a-=2*Math.PI;while(a<=-Math.PI)a+=2*Math.PI;return a*R2D;};
+  return [nz(want[0]-rest[0]),nz((want[1]-want[0])-(rest[1]-rest[0])),nz((want[2]-want[1])-(rest[2]-rest[1]))];
+}
+function wrapAll(P,pad=[.75,.8,.75,.68],slack=0){FING.forEach((f,i)=>{const a=wrap(P,f,pad[i],slack);if(a)P.fa[f]=a.map(x=>Math.round(x));else P.fa[f]=null;});return P;}
+// smallest pad per finger (finger half-thickness) that keeps the finger out of the barrel
+function fitPads(P,base=[.75,.8,.75,.68],tol=.1){const pads=base.slice();for(let i=0;i<4;i++){const f=FING[i];for(let sl=0;sl<=1.2;sl+=.05){const a=wrap(P,f,base[i]+sl);if(!a)continue;P.fa[f]=a.map(Math.round);const st=evalPose(P);const pen=Math.max(...[1,2,3].map(s=>st[f+s].pen));if(pen<=tol){pads[i]=+(base[i]+sl).toFixed(2);break;}}}return pads;}
+function mk(tilt,b){const P=H.params(null);const tr=tilt*Math.PI/180;P.fax=[Math.cos(tr),Math.sin(tr),0];P.b=b.slice();return P;}
+function report(P){const st=evalPose(P);return {fa:FING.map(f=>P.fa[f].join('/')).join(' '),pen:FING.map(f=>Math.max(...[1,2,3].map(s=>st[f+s].pen)).toFixed(2)).join('/'),gap3:FING.map(f=>st[f+3].gap.toFixed(2)).join('/'),
+  phi3:FING.map(f=>Math.round(st[f+3].phi)).join('/'),palm:st.palm.pen.toFixed(2)+'/'+st.palm.np,thumb:[1,2,3].map(s=>st['thumb'+s].pen.toFixed(2)+':'+st['thumb'+s].gap.toFixed(2)).join(' '),tdot:st.thumbDot.toFixed(2)};}
+// rendering: contact sheet of views around the grip
+let cams=[],labels=[];
+function sheet(dirs,c=[0,15,3],R=40){
+  cams=dirs.map(d=>{const cm=new THREE.PerspectiveCamera(30,1,.1,500);const dd=new THREE.Vector3(...d).normalize();cm.position.set(...c).addScaledVector(dd,R);cm.up.set(0,1,0);if(Math.abs(dd.y)>.95)cm.up.set(0,0,1);cm.lookAt(...c);return cm;});
+}
+function draw(){const W=innerWidth,Hh=innerHeight;if(r.domElement.width!==W||r.domElement.height!==Hh)r.setSize(W,Hh,false);
+  r.setScissorTest(true);const n=cams.length||1,cols=Math.ceil(Math.sqrt(n)),rows=Math.ceil(n/cols),cw=W/cols,ch=Hh/rows;
+  cams.forEach((cm,i)=>{const x=(i%cols)*cw,y=Hh-((i/cols|0)+1)*ch;r.setViewport(x,y,cw,ch);r.setScissor(x,y,cw,ch);cm.aspect=cw/ch;cm.updateProjectionMatrix();r.render(sc,cm);});}
+(function A(){if(cams.length)draw();requestAnimationFrame(A);})();
+</script>

@@ -1,0 +1,3 @@
+Built-in image_gen edit, based on IMG_20230508_214226.jpg.
+
+Edit target: the supplied portrait photo. Make a square photographic Windows game app icon from this exact photo, by cropping closely around the man's full head and a little of his jacket, so his face is large and centered and recognizable at 32 pixels. Preserve his exact identity, natural facial features, expression, hair, skin texture and the original blue evening lighting. Keep some of the existing blue background. Simple clean square photograph, edge to edge, no text, no borders, no invented objects, no stylization, no face alterations. Only crop/reframe and modest clarity for small icon readability.

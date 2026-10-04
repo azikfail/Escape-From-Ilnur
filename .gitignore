@@ -1,0 +1,10 @@
+# build outputs and heavy local work files (installers go to GitHub Releases)
+release/
+release.rar
+video/
+desktop/node_modules/
+desktop/game/
+.claude/
+*.log
+desktop/.builder-cache/
+desktop/.npm-cache/

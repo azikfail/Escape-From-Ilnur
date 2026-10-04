@@ -1,0 +1,64 @@
+{
+ "step_soft": [
+  "step_soft_00",
+  "step_soft_01",
+  "step_soft_02",
+  "step_soft_03",
+  "step_soft_04",
+  "step_soft_05",
+  "step_soft_06",
+  "step_soft_07",
+  "step_soft_08",
+  "step_soft_09",
+  "step_soft_10",
+  "step_soft_11",
+  "step_soft_12",
+  "step_soft_13",
+  "step_soft_14",
+  "step_soft_15",
+  "step_soft_16",
+  "step_soft_17"
+ ],
+ "step_hard": [
+  "step_hard_00",
+  "step_hard_01",
+  "step_hard_02",
+  "step_hard_03",
+  "step_hard_04",
+  "step_hard_05",
+  "step_hard_06",
+  "step_hard_07",
+  "step_hard_08",
+  "step_hard_09",
+  "step_hard_10",
+  "step_hard_11",
+  "step_hard_12",
+  "step_hard_13",
+  "step_hard_14",
+  "step_hard_15",
+  "step_hard_16",
+  "step_hard_17"
+ ],
+ "wind": "wind_loop",
+ "engine": "engine_loop",
+ "thunder": "thunder",
+ "door": [
+  "door_a",
+  "door_b"
+ ],
+ "lid": "door_lid",
+ "dogs": [
+  "dog_0",
+  "dog_1",
+  "dog_2",
+  "dog_3",
+  "dog_4",
+  "dog_5",
+  "dog_6",
+  "dog_7"
+ ],
+ "birds": {
+  "flush": "birds_flush",
+  "dawn": "birds_dawn"
+ }
+}

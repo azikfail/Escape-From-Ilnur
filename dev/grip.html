@@ -1,0 +1,50 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#445"><img id=ref src="ref.png" style="display:none;position:fixed;left:0;top:0;width:50vw"><canvas id=c style="width:100vw;height:100vh"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="../assets/handrig.js"></script>
+<script>
+const q=new URLSearchParams(location.search);
+const view=q.get('v')||'side';
+const r=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});r.setSize(innerWidth,innerHeight);r.outputEncoding=THREE.sRGBEncoding;
+const sc=new THREE.Scene();sc.background=new THREE.Color(0x667788);
+sc.add(new THREE.HemisphereLight(0xffffff,0x444455,1.0));const dl=new THREE.DirectionalLight(0xffffff,1.7);dl.position.set(30,50,40);sc.add(dl);
+const L=new THREE.GLTFLoader();
+const load=u=>new Promise((res,rej)=>L.load(u,res,undefined,rej));
+Promise.all([load('../assets/models/hand.glb'),load('../assets/models/flashlight.glb')]).then(([h,f])=>{
+  const P=window.HANDRIG.params(q);
+  let hm;h.scene.traverse(o=>{if(o.isMesh)hm=o;});
+  hm.geometry=window.HANDRIG.deform(hm.geometry,P);hm.material.side=THREE.DoubleSide;
+  sc.add(h.scene);
+  const fl=f.scene;fl.scale.setScalar(100*P.fscale);fl.rotation.set(P.frx,P.fry,P.frz,'YXZ');fl.position.set(P.bx,P.by,P.bz);sc.add(fl);
+  const c=new THREE.Vector3(0.5,17,3),R=45/(+q.get('z')||1);
+  const dir=q.get('vd')?[0,0,1]:{side:[1,0,0],sidel:[-1,0,0],front:[0,0,1],back:[0,0,-1],top:[0,1,.001],iso:[.7,.5,.9],iso2:[-.7,.4,.8],iso3:[.8,.2,-.9],thumb:[1,.3,.6]}[view];
+  const cam=new THREE.PerspectiveCamera(30,innerWidth/innerHeight,.1,500);
+  const vd=q.get('vd');const dn=new THREE.Vector3(...(vd?vd.split(',').map(Number):dir)).normalize();cam.position.copy(c).addScaledVector(dn,R);if(q.get('up'))cam.up.set(...q.get('up').split(',').map(Number));cam.lookAt(c);if(q.get('roll'))cam.rotateZ((+q.get('roll'))*Math.PI/180);
+  if(q.get('sheet')){
+    let dirs=[[0,0,-1],[1,0,-1],[-1,0,-1],[0,1,-1],[1,1,-1],[-1,1,-1],[0,1,0],[1,1,0],[-1,1,0],[0,-1,-1],[1,0,0],[-1,0,0]],nm=['back','+x back','-x back','+y back','+x+y back','-x+y back','+y','+x+y','-x+y','wrist back','+x','-x'];
+    if(q.get('dl')){dirs=q.get('dl').split(';').map(t=>t.split(',').map(Number));nm.length=0;dirs.forEach((d,i)=>nm[i]=d.join(','));}
+    if(q.get('sheet')==='4'){dirs=[];nm.length=0;const eps=[-45,0,45],psis=[-75,-45,-15,15,45,75];for(const e of eps)for(const p of psis){const pe=p*Math.PI/180,ee=e*Math.PI/180;dirs.push([Math.sin(pe)*Math.cos(ee),Math.sin(ee),-Math.cos(pe)*Math.cos(ee)]);nm.push('psi'+p+' el'+e);}}
+    if(q.get('sheet')==='2'){const ax=+(q.get('ax')||.7),el=+(q.get('el')||0);dirs=[];nm.length=0;for(let i=0;i<12;i++){const p=i*Math.PI/6;dirs.push([ax,Math.cos(p)+el,Math.sin(p)]);nm[i]='phi '+(i*30)+' ('+(Math.cos(p)).toFixed(1)+','+(Math.sin(p)).toFixed(1)+')';}}
+    const lab=document.createElement('div');lab.style.cssText='position:fixed;inset:0;pointer-events:none;color:#fff;font:12px monospace';document.body.appendChild(lab);
+    const cams=dirs.map((d,i)=>{const cm=new THREE.PerspectiveCamera(30,(innerWidth/(dirs.length>12?6:4))/(innerHeight/Math.ceil(dirs.length/(dirs.length>12?6:4))),.1,500);const dd=new THREE.Vector3(...d).normalize();cm.position.copy(c).addScaledVector(dd,R);if(Math.abs(d[1])>.99||(d[0]==0&&d[2]==0))cm.up.set(0,0,1);if(q.get('up'))cm.up.set(...q.get('up').split(',').map(Number));cm.lookAt(c);return cm;});
+    document.title='ready';r.setScissorTest(true);
+    (function A(){const W=innerWidth,H=innerHeight;if(r.domElement.width!==W||r.domElement.height!==H){r.setSize(W,H);}
+      lab.innerHTML='';cams.forEach((cm,i)=>{const cols=dirs.length>12?6:4,rows=Math.ceil(dirs.length/cols),cw=W/cols,ch=H/rows,x=(i%cols)*cw,y=H-((i/cols|0)+1)*ch;r.setViewport(x,y,cw,ch);r.setScissor(x,y,cw,ch);cm.aspect=cw/ch;cm.updateProjectionMatrix();r.render(sc,cm);
+        const e=document.createElement('div');e.style.cssText=`position:absolute;left:${x+4}px;top:${(i/cols|0)*ch+2}px`;e.textContent=i+': '+nm[i];lab.appendChild(e);});requestAnimationFrame(A);})();
+    return;
+  }
+  const CMP=q.get('cmp');if(CMP){document.getElementById('ref').style.display='block';}
+  if(q.get('fp')){
+    // first-person: camera looks along d (barrel axis rotated by az degrees), up = -y(hand)
+    const az=(+q.get('az')||0)*Math.PI/180,D=+q.get('D')||16,U=+q.get('U')||3,Rr=+q.get('Rr')||-3,el=(+q.get('el')||0)*Math.PI/180;
+    const d=new THREE.Vector3(Math.cos(az),Math.sin(el),-Math.sin(az)).normalize(),upv=new THREE.Vector3(0,-1,0),rv=new THREE.Vector3().crossVectors(d,upv).normalize();
+    const fp=new THREE.PerspectiveCamera(+(q.get('fov')||62),innerWidth/innerHeight,.1,500);
+    fp.position.copy(c).addScaledVector(d,-D).addScaledVector(upv,U).addScaledVector(rv,Rr);fp.up.copy(upv);fp.lookAt(fp.position.clone().addScaledVector(d,10));
+    if(q.get('roll'))fp.rotateZ((+q.get('roll'))*Math.PI/180);
+    document.title='ready';(function A(){if(r.domElement.width!==innerWidth||r.domElement.height!==innerHeight){r.setSize(innerWidth,innerHeight);}
+      if(CMP){const W=innerWidth/2,H=W*439/560;r.setScissorTest(true);r.setViewport(W,innerHeight-H,W,H);r.setScissor(W,innerHeight-H,W,H);fp.aspect=W/H;}else{fp.aspect=innerWidth/innerHeight;}
+      fp.updateProjectionMatrix();r.render(sc,fp);requestAnimationFrame(A);})();return;
+  }
+  document.title='ready';(function A(){if(r.domElement.width!==innerWidth||r.domElement.height!==innerHeight){r.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();}r.render(sc,cam);requestAnimationFrame(A);})();
+}).catch(e=>document.title='ERR '+(e&&e.message));
+</script>
