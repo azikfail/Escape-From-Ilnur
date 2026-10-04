@@ -3,12 +3,30 @@
 <head>
 <meta charset="utf-8">
 <title>Гараж у Ильнура</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="assets/icon-192.png">
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:Georgia,'Times New Roman',serif;color:#d6cfb8;user-select:none}
 #c{display:block;width:100%;height:100%}
 .fx{position:fixed;inset:0;pointer-events:none}
 #fade{background:#000;opacity:0}
+#touch{position:fixed;inset:0;display:none;z-index:20;touch-action:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#joy{position:absolute;width:130px;height:130px;margin:-65px 0 0 -65px;border-radius:50%;border:2px solid rgba(230,215,170,.28);background:rgba(0,0,0,.18);display:none;pointer-events:none}
+#joyk{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(230,215,170,.35);border:2px solid rgba(255,240,200,.5)}
+#joyhint{position:absolute;left:4%;bottom:7%;color:rgba(230,215,170,.35);font-size:13px;letter-spacing:2px;pointer-events:none}
+.tb{position:absolute;width:56px;height:56px;border-radius:50%;border:2px solid rgba(230,215,170,.35);background:rgba(10,8,6,.45);color:#e9d8b4;font:11px Georgia,serif;letter-spacing:1px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.1}
+.tb.on{background:rgba(160,40,20,.55);border-color:#d0603a}
+.tb:active{background:rgba(160,40,20,.65)}
+#tAct{width:104px;height:104px;right:92px;bottom:18px;font-size:12px;padding:8px;box-sizing:border-box;border-width:3px;opacity:.35}
+#tAct.ready{opacity:1;border-color:#e5c76b;box-shadow:0 0 18px rgba(229,199,107,.35)}
+#tJump{right:18px;bottom:18px}#tCrouch{right:18px;bottom:84px}#tFlash{right:18px;bottom:150px}
+#tCan{right:206px;bottom:18px}#tMap{right:138px;top:max(64px,13vh)}#tNV{right:76px;top:max(64px,13vh)}#tPause{right:18px;top:max(64px,13vh)}
+#rotate{position:fixed;inset:0;z-index:60;background:#000;color:#d6cfb8;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:20px;letter-spacing:2px;padding:20px}
+#rotate b{font-size:64px;display:block;margin-bottom:16px;font-weight:normal}
+body.mobile #menu{justify-content:flex-start;overflow-y:auto;padding:14px 10px 30px;box-sizing:border-box}
+body.mobile #c{touch-action:none}
+
 #slitV{display:none;background:linear-gradient(90deg,#000 0,#000 45%,rgba(0,0,0,.45) 48%,rgba(0,0,0,0) 50%,rgba(0,0,0,.45) 52%,#000 55%,#000 100%)}
 #slitBed{display:none;background:linear-gradient(180deg,#040302 0,#040302 52%,rgba(0,0,0,.55) 60%,rgba(0,0,0,0) 68%,rgba(0,0,0,.2) 90%,#000 100%)}
 #slitGrave{display:none;background:linear-gradient(90deg,#000 0,#000 24%,rgba(0,0,0,0) 36%,rgba(0,0,0,0) 64%,#000 76%,#000 100%),linear-gradient(180deg,#000 0,#000 8%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 78%,#000 92%,#000 100%)}
@@ -62,6 +80,11 @@ button:hover{background:#3a140d}
 #note p{margin:10px;color:#8f886d;font-size:14px}
 #end h2{font-size:54px;margin:0 0 12px;font-weight:normal;letter-spacing:5px}
 #end p{font-size:18px;color:#a39d84;margin:0 0 26px}
+@media (max-height:520px){h1{font-size:34px;letter-spacing:4px}.sub{font-size:12px;margin-bottom:10px}.help{font-size:12px;line-height:1.5;margin-bottom:12px}
+  #opts{font-size:12px;margin-bottom:10px}#opts .row{margin:4px 0}#opts input[type=range]{width:120px}#opts label{min-width:120px}
+  button{font-size:16px;padding:9px 24px}.df{font-size:12px;padding:6px 10px}
+  .k{width:56px;font-size:9px;padding:4px 2px}.k b{font-size:16px}#lives{top:62px;font-size:17px}#obj{max-width:46%;font-size:12px}
+  #mline{font-size:19px}#rline{font-size:14px}#msg{font-size:15px;bottom:30%}#alert{font-size:18px}#note canvas{max-height:92vh}}
 </style>
 </head>
 <body>
@@ -92,6 +115,8 @@ button:hover{background:#3a140d}
   <div id="alert"></div>
   <div id="cans"></div>
 </div>
+<div id="touch"><div id="joyhint">← джойстик →</div><div id="joy"><div id="joyk"></div></div><div class="tb" id="tAct">ДЕЙСТВИЕ</div><div class="tb" id="tJump">ПРЫЖОК</div><div class="tb" id="tCrouch">ПРИСЕСТЬ</div><div class="tb" id="tFlash">ФОНАРЬ</div><div class="tb" id="tCan">БАНКА</div><div class="tb" id="tMap">КАРТА</div><div class="tb" id="tNV">КАМЕРА</div><div class="tb" id="tPause">II</div></div>
+<div id="rotate"><b>⟳</b>Поверни телефон горизонтально</div>
 <div id="intro"><video id="introv" playsinline preload="auto"></video><div id="skipi">Любая клавиша — пропустить</div></div>
 <div id="fade" class="fx"></div>
 <div id="menu" class="ov">
@@ -150,6 +175,8 @@ const $=id=>document.getElementById(id);
 const D4=[[1,0],[-1,0],[0,1],[0,-1]];
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=(R()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];}return a;};
 const FILE=location.protocol==='file:';
+const MOBILE=/[?&]mobile=1/.test(location.search)||(matchMedia('(pointer:coarse)').matches&&('ontouchstart' in window||navigator.maxTouchPoints>0));
+if(MOBILE)document.body.classList.add('mobile');
 const pick=a=>a[(Math.random()*a.length)|0];
 const DIFF=[{spd:.8,hear:.6,see:18,calm:45,lunge:1.05,info:'Ильнур медленнее, хуже слышит и видит. Для спокойного прохождения.'},
             {spd:1,hear:1,see:26,calm:25,lunge:1.2,info:'Задуманный баланс.'},
@@ -166,7 +193,7 @@ const canvas=$('c');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance'});
 const maxPR=Math.min(devicePixelRatio,1.5);
 const QL=[{pr:Math.min(maxPR,1.5),shadow:2048,bloom:true,vol:32},{pr:Math.min(maxPR,1.25),shadow:1024,bloom:true,vol:28},{pr:Math.min(maxPR,1),shadow:1024,bloom:true,vol:20},{pr:.85,shadow:512,bloom:false,vol:14},{pr:.7,shadow:0,bloom:false,vol:0}];
-let qi=OPT.q==='auto'?0:clamp(+OPT.q,0,QL.length-1);
+let qi=OPT.q==='auto'?(MOBILE?3:0):clamp(+OPT.q,0,QL.length-1);
 renderer.setPixelRatio(QL[qi].pr);renderer.setSize(innerWidth,innerHeight);
 renderer.outputEncoding=THREE.sRGBEncoding;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=EXP.base*Math.pow(OPT.bright/100,1.3);
@@ -1910,6 +1937,7 @@ function playerUpdate(dt){
   let ix=0,iz=0;
   if(keysDown.KeyW||keysDown.ArrowUp)iz++;if(keysDown.KeyS||keysDown.ArrowDown)iz--;
   if(keysDown.KeyD||keysDown.ArrowRight)ix++;if(keysDown.KeyA||keysDown.ArrowLeft)ix--;
+  let amag=1;if(TOUCH.mx||TOUCH.my){ix=TOUCH.mx;iz=TOUCH.my;amag=Math.min(1,Math.hypot(ix,iz)*1.25);}
   const len=Math.hypot(ix,iz);
   P.crouch=lerp(P.crouch||0,(keysDown.ControlLeft||keysDown.KeyC)?1:0,1-Math.exp(-dt*9));
   const sneak=P.crouch>.5,air=P.y>.01;
@@ -1918,7 +1946,7 @@ function playerUpdate(dt){
   const speed=(wantSprint?6.1:sneak?1.8:3.6)*(1-S.injury*.12)*(iz<0&&!ix?.75:1);
   if(P.sprinting){P.stam-=dt*.19;if(P.stam<=0){P.stam=0;P.tired=true;if(ready('tired',50000))rsay(bag('tired',['r_nemogu','r_netnet']),false,true);}}else{P.stam=Math.min(1,P.stam+dt*(len?.1:.2));if(P.tired&&P.stam>.3)P.tired=false;}
   let tx=0,tz=0;
-  if(len){const fx=-Math.sin(P.yaw),fz=-Math.cos(P.yaw),rx=Math.cos(P.yaw),rz=-Math.sin(P.yaw);tx=(fx*iz+rx*ix)/len*speed;tz=(fz*iz+rz*ix)/len*speed;}
+  if(len){const fx=-Math.sin(P.yaw),fz=-Math.cos(P.yaw),rx=Math.cos(P.yaw),rz=-Math.sin(P.yaw);tx=(fx*iz+rx*ix)/len*speed*amag;tz=(fz*iz+rz*ix)/len*speed*amag;}
   // ground: quick acceleration, slightly slower stopping (momentum); air: little control
   const acc=air?1.5:(len?9:7),k=1-Math.exp(-dt*acc);P.vx+=(tx-P.vx)*k;P.vz+=(tz-P.vz)*k;
   // jump
@@ -2345,7 +2373,7 @@ function qualityCheck(rdt){
   if(OPT.q!=='auto')return;
   fpsAcc+=rdt;fpsN++;if(fpsAcc<2)return;const fps=fpsN/fpsAcc;fpsAcc=0;fpsN=0;qCool-=2;
   if(qCool>0)return;
-  if(fps<40&&qi<QL.length-1){qi++;applyQuality();qCool=6;}
+  if(fps<(MOBILE?27:40)&&qi<QL.length-1){qi++;applyQuality();qCool=6;}
 }
 function applyOpts(){renderer.toneMappingExposure=EXP.base*Math.pow(OPT.bright/100,1.3);if(!S.punish){camera.fov=OPT.fov;camera.updateProjectionMatrix();}
   if(OPT.q!=='auto'){const qq=clamp(+OPT.q,0,QL.length-1);if(qq!==qi){qi=qq;applyQuality();}}}
@@ -2370,7 +2398,7 @@ function frame(now){
     else if(S.punish)punishUpdate(dt);
     else if(!S.dead){
       playerUpdate(dt);monsterUpdate(dt);helperUpdate(dt);nvUpdate(dt);
-      const it=noteOpen?null:nearestInteract();near=it;const pr=$('prompt');const txt=it?'[E] '+it.label:'';
+      const it=noteOpen?null:nearestInteract();near=it;const pr=$('prompt');const txt=it?(MOBILE?'':'[E] ')+it.label:'';if(MOBILE)touchAct(it);
       if(pr.textContent!==txt){pr.textContent=txt;}pr.style.opacity=it?1:0;
     }
     if(!S.won)camera.rotation.set(P.pitch,P.yaw,P.roll);
@@ -2428,9 +2456,9 @@ function updVol(){
   u.uFogC.value.copy(VFOG).lerp(LCOL,(lightning.intensity||0)*.12);
 }
 /* =================================================================== INPUT */
-function requestLock(){try{const p=canvas.requestPointerLock();if(p&&p.catch)p.catch(()=>{S.noLock=true;});}catch(e){S.noLock=true;}}
+function requestLock(){if(MOBILE){S.noLock=true;return;}try{const p=canvas.requestPointerLock();if(p&&p.catch)p.catch(()=>{S.noLock=true;});}catch(e){S.noLock=true;}}
 function resume(fromIntro){
-  $('menu').style.display='none';$('hud').style.display='block';S.paused=false;
+  $('menu').style.display='none';$('hud').style.display='block';S.paused=false;if(MOBILE){$('touch').style.display='block';goFull();}
   if(!AC){initAudio();setMusicLevel(0);loadVoices();loadSfx();startSong();}if(AC.state==='suspended')AC.resume();if(SONG.el&&SONG.el.paused)SONG.el.play().catch(()=>{});
   if(!S.started){S.started=true;startSong();updateCans();if(NM())helperSpawn();S.calmUntil=DIFF[diff].calm;if(NM()){EXP.base=.66;applyOpts();AMB.hemi=.05;AMB.fog=.06;hemi.intensity=AMB.hemi;scene.fog.density=AMB.fog;FOGC.setHex(0x060203);scene.fog.color.copy(FOGC);scene.background.copy(FOGC);VFOG.setRGB(.03,.012,.012);moonL.intensity=.07;}$('diffRow').style.display='none';$('diffInfo').style.display='none';updateHud();say('Найди ключи. Не дай Ильнуру найти тебя.',4500);setTimeout(()=>rsay('r_gdeya',false,true),1300);setTimeout(()=>rsay('r_gospodi',false,true),3600);}
   if(fromIntro&&!document.pointerLockElement){if(!S.noLock)setTimeout(()=>say('Кликни мышкой, чтобы осмотреться.',3500),4700);}else requestLock();
@@ -2450,7 +2478,45 @@ function playIntro(){
   iv.onended=end;iv.onerror=end;addEventListener('keydown',skip,true);box.addEventListener('mousedown',skip);
   iv.play().catch(()=>end());setTimeout(end,16000);
 }
-$('start').onclick=()=>{if(introOn)return;if(!S.started&&!FILE)playIntro();else resume();};
+/* =================================================================== MOBILE: touch controls */
+const TOUCH={mx:0,my:0,joy:null,look:null,lx:0,ly:0};
+function goFull(){try{const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen({navigationUI:'hide'}).then(()=>{try{screen.orientation.lock('landscape').catch(()=>{});}catch(e){}}).catch(()=>{});}catch(e){}}
+function key(code){const ev=c=>new KeyboardEvent(c,{code,key:'',bubbles:true});dispatchEvent(ev('keydown'));setTimeout(()=>dispatchEvent(ev('keyup')),90);}
+function touchAct(it){const b=$('tAct');const t=it?it.label:'ДЕЙСТВИЕ';if(b.textContent!==t)b.textContent=t;b.classList.toggle('ready',!!it);}
+function rotateCheck(){$('rotate').style.display=MOBILE&&innerHeight>innerWidth?'flex':'none';}
+if(MOBILE){
+  addEventListener('resize',rotateCheck);rotateCheck();
+  const tl=$('touch'),joy=$('joy'),knob=$('joyk'),R0=58;
+  const btn=(id,fn,hold)=>{const e=$(id);e.addEventListener('touchstart',ev=>{ev.preventDefault();ev.stopPropagation();fn(true);},{passive:false});
+    if(hold){e.addEventListener('touchend',ev=>{ev.preventDefault();fn(false);},{passive:false});e.addEventListener('touchcancel',()=>fn(false));}};
+  btn('tAct',()=>key('KeyE'));
+  btn('tJump',on=>{keysDown.Space=on;},true);
+  btn('tCrouch',()=>{keysDown.ControlLeft=!keysDown.ControlLeft;$('tCrouch').classList.toggle('on',!!keysDown.ControlLeft);});
+  btn('tFlash',()=>key('KeyF'));btn('tCan',()=>key('KeyG'));btn('tMap',()=>key('KeyM'));btn('tNV',()=>key('KeyN'));
+  btn('tPause',()=>{if(noteOpen)toggleNote(false);pause();});
+  $('note').addEventListener('touchstart',ev=>{ev.preventDefault();toggleNote(false);},{passive:false});
+  tl.addEventListener('touchstart',ev=>{ev.preventDefault();
+    for(const t of ev.changedTouches){
+      if(!TOUCH.joy&&t.clientX<innerWidth*.42&&t.clientY>innerHeight*.3){TOUCH.joy={id:t.identifier,x:t.clientX,y:t.clientY};joy.style.left=t.clientX+'px';joy.style.top=t.clientY+'px';joy.style.display='block';knob.style.transform='';$('joyhint').style.display='none';}
+      else if(!TOUCH.look){TOUCH.look={id:t.identifier};TOUCH.lx=t.clientX;TOUCH.ly=t.clientY;}}},{passive:false});
+  tl.addEventListener('touchmove',ev=>{ev.preventDefault();
+    for(const t of ev.changedTouches){
+      if(TOUCH.joy&&t.identifier===TOUCH.joy.id){let dx=t.clientX-TOUCH.joy.x,dy=t.clientY-TOUCH.joy.y;const d=Math.hypot(dx,dy);if(d>R0){dx*=R0/d;dy*=R0/d;}
+        knob.style.transform='translate('+dx+'px,'+dy+'px)';const m=Math.min(1,d/R0);TOUCH.mx=dx/R0;TOUCH.my=-dy/R0;
+        keysDown.ShiftLeft=m>.93&&-dy>R0*.45;}                                     // push the stick all the way forward to run
+      else if(TOUCH.look&&t.identifier===TOUCH.look.id){const mx=t.clientX-TOUCH.lx,my=t.clientY-TOUCH.ly;TOUCH.lx=t.clientX;TOUCH.ly=t.clientY;
+        if(S.paused||S.dead||S.won||S.punish)continue;const sk=.0052*OPT.sens/100;P.yaw-=mx*sk;P.pitch=clamp(P.pitch-my*sk,-1.35,1.35);vmState.mdx+=mx*.6;vmState.mdy+=my*.6;}}},{passive:false});
+  const end=ev=>{for(const t of ev.changedTouches){
+      if(TOUCH.joy&&t.identifier===TOUCH.joy.id){TOUCH.joy=null;TOUCH.mx=TOUCH.my=0;keysDown.ShiftLeft=false;joy.style.display='none';}
+      if(TOUCH.look&&t.identifier===TOUCH.look.id)TOUCH.look=null;}};
+  tl.addEventListener('touchend',end);tl.addEventListener('touchcancel',end);
+  // phones: pause when the app goes to the background
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&S.started&&!S.paused&&!S.dead&&!S.won)pause();});
+  $('helptxt').innerHTML='Ты — <span style="color:#e5c76b">Регина</span>. Найди четыре ключа и заведи Датсун в гараже. По полю ходит <span style="color:#b32a1a">Ильнур</span>.<br>'+
+    '<b>Джойстик слева</b> — идти (до упора вперёд — бежать) &nbsp; <b>свайп справа</b> — осмотреться<br><b>ДЕЙСТВИЕ</b> — взять, открыть, спрятаться &nbsp; кнопки справа — прыжок, присесть, фонарь, банка, карта, камера<br>'+
+    'Играй в наушниках и в темноте. Лучше всего — в Chrome на Android.';
+}
+$('start').onclick=()=>{if(MOBILE)goFull();if(introOn)return;if(!S.started&&!FILE)playIntro();else resume();};
 function refreshMenu(){document.querySelectorAll('.df').forEach(b=>b.classList.toggle('sel',+b.dataset.d===diff));$('diffInfo').textContent=DIFF[diff].info;
   $('vMus').value=VOL.mus;$('vVox').value=VOL.vox;$('vSfx').value=VOL.sfx;$('oSens').value=OPT.sens;$('oBright').value=OPT.bright;$('oFov').value=OPT.fov;$('oQual').value=String(OPT.q);}
 for(const [id,k] of [['oSens','sens'],['oBright','bright'],['oFov','fov']])$(id).oninput=e=>{OPT[k]=+e.target.value;lsSet('opts',OPT);applyOpts();};
@@ -2458,7 +2524,7 @@ $('oQual').onchange=e=>{OPT.q=e.target.value;lsSet('opts',OPT);if(OPT.q==='auto'
 document.querySelectorAll('.df').forEach(b=>b.onclick=()=>{if(S.started)return;diff=+b.dataset.d;lsSet('diff',diff);refreshMenu();});
 for(const [id,k] of [['vMus','mus'],['vVox','vox'],['vSfx','sfx']])$(id).oninput=e=>{VOL[k]=+e.target.value;lsSet('vol',VOL);applyVol();if(k==='vox'&&AC&&!S.paused)playClip('r_est',{sub:false});};
 refreshMenu();
-function pause(){S.paused=true;if(SONG.el)SONG.el.pause();$('menu').style.display='flex';$('start').textContent='ПРОДОЛЖИТЬ';$('helptxt').style.display='none';$('toMenu').style.display='inline-block';if(AC)AC.suspend();}
+function pause(){S.paused=true;if(MOBILE)$('touch').style.display='none';if(SONG.el)SONG.el.pause();$('menu').style.display='flex';$('start').textContent='ПРОДОЛЖИТЬ';$('helptxt').style.display='none';$('toMenu').style.display='inline-block';if(AC)AC.suspend();}
 $('toMenu').onclick=()=>{if(document.exitPointerLock)document.exitPointerLock();location.reload();};
 document.addEventListener('pointerlockchange',()=>{
   S.locked=document.pointerLockElement===canvas;
@@ -2495,7 +2561,7 @@ camera.position.set(P.x,1.62,P.z);camera.rotation.set(0,P.yaw,0);
 $('loading').textContent='подготовка шейдеров...';
 setTimeout(()=>{try{renderer.compile(scene,camera);renderer.compile(vmScene,vmCam);}catch(e){}$('loading').textContent='';},50);
 requestAnimationFrame(frame);
-window.__g={hides,racks,DOORS,radio,throwCan,setDoor,dropRack,distract,OPT,applyOpts,CHM,HELP,helperGrab,NM,LOC,mapLoc,SONG,scares,shade,notePos:()=>notePos,bfs,keysDown,placeRig,vm,VS,speakVoice,voicePump,ilnur,regina,mspeak,rsay,VM,MODELS,vmGrip,envTex:()=>envTex,EGG,dawn:()=>!!dawnNode,wind:()=>!!windBed,engine:()=>!!engineNode,SFX,playSfx,creak,thunder,dogBark,stepAt,surfaceAt,bag,ready,scare:(t)=>triggerScare({type:t}),sim:(sec)=>{for(let i=0;i<sec*30;i++){S.t+=1/30;if(S.punish)return true;monsterUpdate(1/30);}return !!S.punish;},vmBase,frame:(ms)=>{let t=Math.max(performance.now(),last);for(let i=0;i<ms/33;i++){t+=33;frame(t);}},renderFrame:()=>{cullCorn();composer.render();},renderer,applyQ:(i)=>{qi=i;applyQuality();},P,S,mon,have,grid,keyItems,hides,garage,farm,camera,scene,teleport:(x,z)=>{P.x=x;P.z=z;},takeKey,startWin,resume,enterHide,exitHide,setNV,startPunish,rig,monG,vm,headU,QL,get qi(){return qi;}};
+window.__g={TOUCH,MOBILE,hides,racks,DOORS,radio,throwCan,setDoor,dropRack,distract,OPT,applyOpts,CHM,HELP,helperGrab,NM,LOC,mapLoc,SONG,scares,shade,notePos:()=>notePos,bfs,keysDown,placeRig,vm,VS,speakVoice,voicePump,ilnur,regina,mspeak,rsay,VM,MODELS,vmGrip,envTex:()=>envTex,EGG,dawn:()=>!!dawnNode,wind:()=>!!windBed,engine:()=>!!engineNode,SFX,playSfx,creak,thunder,dogBark,stepAt,surfaceAt,bag,ready,scare:(t)=>triggerScare({type:t}),sim:(sec)=>{for(let i=0;i<sec*30;i++){S.t+=1/30;if(S.punish)return true;monsterUpdate(1/30);}return !!S.punish;},vmBase,frame:(ms)=>{let t=Math.max(performance.now(),last);for(let i=0;i<ms/33;i++){t+=33;frame(t);}},renderFrame:()=>{cullCorn();composer.render();},renderer,applyQ:(i)=>{qi=i;applyQuality();},P,S,mon,have,grid,keyItems,hides,garage,farm,camera,scene,teleport:(x,z)=>{P.x=x;P.z=z;},takeKey,startWin,resume,enterHide,exitHide,setNV,startPunish,rig,monG,vm,headU,QL,get qi(){return qi;}};
 })();
 </script>
 </body>
